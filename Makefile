@@ -2,10 +2,10 @@ all: os.bin
 
 # compile kernel C code to object file (no linking yet)
 kernel.o: kernel.c
-	gcc -m32 -ffreestanding -fno-pie -fno-pic -c kernel.c -o kernel.o
+	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -c kernel.c -o kernel.o
 
 idt.o: idt.c
-	gcc -m32 -ffreestanding -fno-pie -fno-pic -c idt.c -o idt.o
+	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -c idt.c -o idt.o
 
 kernel_entry.o: kernel_entry.asm
 	nasm -f elf kernel_entry.asm -o kernel_entry.o

@@ -67,14 +67,11 @@ void idt_init() {
     idt_desc.limit = (sizeof(IDTEntry) * 256) - 1;
     idt_desc.base  = (unsigned int) &idt;
 
-    // Eerst alles op 0 zetten (zodat we geen random jumps maken)
     for (int i = 0; i < 256; i++) {
         set_idt_entry(i, (unsigned int)keyboard_handler_asm);
     }
 
-    // Laad de IDT VOORDAT je sti doet
-    __asm__("lidt %0" : : "m"(idt_desc)); 
-
-    // STI is het gevaarlijke moment
-    __asm__("sti");
+    // Gebruik "m" (memory) in plaats van "r"
+    __asm__ volatile("lidt %0" : : "m"(idt_desc));
+    __asm__ volatile("sti");
 }
