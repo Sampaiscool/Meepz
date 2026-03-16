@@ -5,13 +5,20 @@ global keyboard_handler_asm
 extern keyboard_handler
 
 kernel_entry:
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
     mov esp, 0x90000
     call main
 
     jmp $
 
 keyboard_handler_asm:
-    pusha               ; save all registers
+    pushad               ; save all registers
     call keyboard_handler ; call our C function
-    popa                ; restore all registers
-    iret                ; interrupt return — NOT ret!
+    popad                ; restore all registers
+    iretd                ; interrupt return — NOT ret!

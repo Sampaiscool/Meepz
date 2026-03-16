@@ -46,7 +46,7 @@ void main() {
     clear_screen();
     char font = 0x0F;
 
-    print("TeaTeaT\n", font);
+    print("TeaTeaTHuaba\n", font);
     print("MAKMAK", font);
 }
 

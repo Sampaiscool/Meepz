@@ -6,15 +6,15 @@ typedef struct {
     unsigned char  zero;       // always 0
     unsigned char  flags;      // type and attributes
     unsigned short base_high;  // upper 16 bits of handler address
-} IDTEntry;
+} __attribute__((packed)) IDTEntry;
 
 typedef struct {
     unsigned short limit;  // size of IDT - 1
     unsigned int   base;   // address of IDT
-} IDTDescriptor;
+} __attribute__((packed)) IDTDescriptor;
 
-IDTEntry idt[256];
-IDTDescriptor idt_desc;
+IDTEntry idt[256] = {0};
+IDTDescriptor idt_desc = {0};
 
 void keyboard_handler();
 
@@ -27,6 +27,10 @@ unsigned char port_read(unsigned short port) {
     unsigned char result;
     __asm__("in %%dx, %%al" : "=a"(result) : "d"(port));
     return result;
+}
+
+void dummy_handler() {
+    port_write(0x20, 0x20); // Send EOI so PIC knows we heard it
 }
 
 void pic_remap() {
@@ -63,12 +67,14 @@ void idt_init() {
     idt_desc.limit = (sizeof(IDTEntry) * 256) - 1;
     idt_desc.base  = (unsigned int) &idt;
 
-    // set keyboard interrupt (IRQ1 = interrupt 33)
-    set_idt_entry(33, (unsigned int) keyboard_handler_asm);
+    // Eerst alles op 0 zetten (zodat we geen random jumps maken)
+    for (int i = 0; i < 256; i++) {
+        set_idt_entry(i, (unsigned int)keyboard_handler_asm);
+    }
 
-    // load the IDT
-    __asm__("lidt (%0)" : : "r"(&idt_desc));
+    // Laad de IDT VOORDAT je sti doet
+    __asm__("lidt %0" : : "m"(idt_desc)); 
 
-    // enable interrupts
+    // STI is het gevaarlijke moment
     __asm__("sti");
 }
