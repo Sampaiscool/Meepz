@@ -198,7 +198,7 @@ void execute_command() {
     } else if (shell_buffer[0] == 'c' && shell_buffer[1] == 'd' && shell_buffer[2] == ' ') {
         change_directory(&shell_buffer[3]);
     } else if (str_step_compare(shell_buffer, "help")) {
-        print("Commands: help, clear, hi, ls, cd <dir>, cd ..\n", 0x0A);
+        print("Commands: help, clear, hi, ls, cd <dir>\n", 0x0A);
     } else if (str_step_compare(shell_buffer, "hi")) {
         print("Alloha from the kernel!", 0x0B);
     } else if (str_step_compare(shell_buffer, "ls")) {

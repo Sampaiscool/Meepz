@@ -25,7 +25,7 @@
     ; read kernel from disk into memory at 0x1000
     ; must happen before cli — int 0x13 is a BIOS interrupt, 16-bit only
     mov ah, 0x02        ; BIOS function: read sectors
-    mov al, 15          ; read 15 sectors (plenty for our tiny kernel)
+    mov al, 50          ; load 50 sectors to be safe (25KB)
     mov ch, 0           ; cylinder 0
     mov cl, 2           ; start at sector 2 (sector 1 is our bootloader)
     mov dh, 0           ; head 0
