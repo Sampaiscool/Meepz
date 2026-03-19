@@ -74,6 +74,25 @@ void clear_screen() {
     cursor = 0;
 }
 
+void scroll_if_needed() {
+    char *video = (char*)0xB8000;
+    int max_cursor = 25 * 160; // 25 rows * 160 bytes per row
+
+    if (cursor >= max_cursor) {
+        // shift every row up by one
+        for (int i = 0; i < 24 * 160; i++) {
+            video[i] = video[i + 160];
+        }
+        // clear the last row
+        for (int i = 24 * 160; i < 25 * 160; i += 2) {
+            video[i]     = ' ';
+            video[i + 1] = 0x0F;
+        }
+        // put cursor at start of last row
+        cursor = 24 * 160;
+    }
+}
+
 void print(char *string, char hex) {
     char *video = (char*) 0xB8000 + cursor;
 
@@ -91,6 +110,8 @@ void print(char *string, char hex) {
             continue;
         }
 
+        scroll_if_needed();
+        video = (char*) 0xB8000 + cursor;
         video[0] = *string;
         video[1] = hex;
 
@@ -105,30 +126,25 @@ void main() {
     pic_remap();
     idt_init();
 
-    // 1. Initialiseer de Root
+    // init the root
     root_node = create_node("/", DIRECTORY);
-    root_node->parent = 0; // De root heeft geen bovenliggende map
+    root_node->parent = 0; // root has no parrent
     current_directory = root_node;
 
-    // 2. Maak een 'home' map
     FSNode* home = create_node("home", DIRECTORY);
     home->parent = root_node;
     root_node->children[root_node->child_count++] = home;
 
-    // 3. Maak een bestand IN de 'home' map
     FSNode* meep = create_node("meep.txt", FILE);
     meep->parent = home;
     home->children[home->child_count++] = meep;
 
-    // 4. Maak een 'dev' map in de root
     FSNode* dev = create_node("dev", DIRECTORY);
     dev->parent = root_node;
     root_node->children[root_node->child_count++] = dev;
 
-    clear_screen();
+     clear_screen();
     print("Meepz OS Loaded ! Shadow Wizard Money Gang\n", 0x0B);
-    
-    // Toon de prompt met de huidige locatie
     print("Meepz:", 0x0E);
     print(current_directory->name, 0x0E);
     print("> ", 0x0E);
@@ -141,9 +157,9 @@ void list_files() {
 
     for (int i = 0; i < current_directory->child_count; i++) {
         if (current_directory->children[i]->type == DIRECTORY) {
-            print("[DIR] ", 0x0B); // Blauw voor mappen
+            print("[DIR] ", 0x0B); // blue
         } else {
-            print("[FIL] ", 0x0A); // Groen voor files
+            print("[FIL] ", 0x0A); // green
         }
         print(current_directory->children[i]->name, 0x0F);
         print("\n", 0x0F);
@@ -158,7 +174,7 @@ void change_directory(char *target_name) {
         return;
     }
 
-    // Zoek in de huidige map naar de target
+    // search in current directory
     for (int i = 0; i < current_directory->child_count; i++) {
         if (str_step_compare(current_directory->children[i]->name, target_name)) {
             if (current_directory->children[i]->type == DIRECTORY) {
@@ -176,25 +192,32 @@ void change_directory(char *target_name) {
 void execute_command() {
     print("\n", 0x0F);
 
+    // TODO: PLEASE update this sometime :)
     if (str_step_compare(shell_buffer, "clear")) {
         clear_screen();
     } else if (shell_buffer[0] == 'c' && shell_buffer[1] == 'd' && shell_buffer[2] == ' ') {
         change_directory(&shell_buffer[3]);
     } else if (str_step_compare(shell_buffer, "help")) {
-        print("Meepz Commands: help, clear, hi", 0x0A); // green
+        print("Commands: help, clear, hi, ls, cd <dir>, cd ..\n", 0x0A);
     } else if (str_step_compare(shell_buffer, "hi")) {
-        print("Alloha from the kernel!", 0x0B); // lightblue
+        print("Alloha from the kernel!", 0x0B);
     } else if (str_step_compare(shell_buffer, "ls")) {
         list_files();
+    } else if (str_step_compare(shell_buffer, "poweroff")) {
+        print("Goodbye!\n", 0x0A);
+        __asm__("hlt");
     } else {
-        print("Unknown: ", 0x0C); // red
+        print("Unknown: ", 0x0C);
         print(shell_buffer, 0x0C);
     }
 
-    // reset buffer for next one
-    for(int i = 0; i < 256; i++) shell_buffer[i] = 0;
+    for (int i = 0; i < 256; i++) shell_buffer[i] = 0;
     buffer_idx = 0;
-    print("\nMeepz> ", 0x0E); // yellow
+
+    // show current working dir
+    print("\nMeepz:", 0x0E);
+    print(current_directory->name, 0x0E);
+    print("> ", 0x0E);
 }
 
 void keyboard_handler() {

@@ -23,4 +23,4 @@ os.bin: boot.bin kernel.bin
 	cat boot.bin kernel.bin > os.bin
 
 run: os.bin
-	qemu-system-x86_64 -drive format=raw,file=os.bin
+	ghostty -e qemu-system-i386 -drive format=raw,file=os.bin -display curses -no-reboot -no-shutdown
