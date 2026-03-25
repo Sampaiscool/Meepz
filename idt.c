@@ -67,11 +67,14 @@ void idt_init() {
     idt_desc.limit = (sizeof(IDTEntry) * 256) - 1;
     idt_desc.base  = (unsigned int) &idt;
 
+    // 1. Zet eerst alles op een dummy_handler (of 0)
     for (int i = 0; i < 256; i++) {
-        set_idt_entry(i, (unsigned int)keyboard_handler_asm);
+        set_idt_entry(i, (unsigned int)dummy_handler); 
     }
 
-    // Gebruik "m" (memory) in plaats van "r"
+    // 2. Alleen interrupt 33 is voor het keyboard (IRQ 1 + 32 offset)
+    set_idt_entry(33, (unsigned int)keyboard_handler_asm);
+
     __asm__ volatile("lidt %0" : : "m"(idt_desc));
-    __asm__ volatile("sti");
+    __asm__ volatile("sti"); // Zet interrupts aan
 }

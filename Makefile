@@ -1,26 +1,36 @@
-all: os.bin
+# Objecten
+OBJS = kernel_entry.o kernel.o idt.o gdt.o
 
-# compile kernel C code to object file (no linking yet)
+all: meepz.iso
+
+kernel_entry.o: kernel_entry.asm
+	nasm -f elf32 kernel_entry.asm -o kernel_entry.o
+
 kernel.o: kernel.c
 	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -c kernel.c -o kernel.o
 
 idt.o: idt.c
 	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -c idt.c -o idt.o
 
-kernel_entry.o: kernel_entry.asm
-	nasm -f elf kernel_entry.asm -o kernel_entry.o
+gdt.o: gdt.c
+	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -c gdt.c -o gdt.o
 
-# assemble kernel entry stub
-kernel.bin: kernel_entry.o kernel.o idt.o
-	ld -m elf_i386 -o kernel.bin -Ttext 0x1000 -e kernel_entry kernel_entry.o kernel.o idt.o --oformat binary
+kernel.elf: $(OBJS)
+	ld -m elf_i386 -T linker.ld -o kernel.elf $(OBJS)
 
-# assemble bootloader
-boot.bin: boot.asm
-	nasm -f bin boot.asm -o boot.bin
+meepz.iso: kernel.elf
+	mkdir -p iso/boot/grub
+	cp kernel.elf iso/boot/kernel.elf
+	@echo 'set timeout=0' > iso/boot/grub/grub.cfg
+	@echo 'set default=0' >> iso/boot/grub/grub.cfg
+	@echo 'menuentry "Meepz OS" {' >> iso/boot/grub/grub.cfg
+	@echo '  multiboot /boot/kernel.elf' >> iso/boot/grub/grub.cfg
+	@echo '  boot' >> iso/boot/grub/grub.cfg
+	@echo '}' >> iso/boot/grub/grub.cfg
+	grub-mkrescue -o meepz.iso iso
 
-# combine bootloader + kernel into one disk image
-os.bin: boot.bin kernel.bin
-	cat boot.bin kernel.bin > os.bin
+run: meepz.iso
+	qemu-system-i386 -cdrom meepz.iso -display sdl
 
-run: os.bin
-	qemu-system-i386 -drive format=raw,file=os.bin -display sdl -no-reboot -no-shutdown
+clean:
+	rm -rf *.o kernel.elf meepz.iso iso

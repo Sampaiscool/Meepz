@@ -1,4 +1,5 @@
 #include "idt.h"
+#include "gdt.h"
 
 #define MAX_NAME 64
 #define MAX_CHILDREN 16
@@ -43,7 +44,7 @@ void strncpy(char *dest, const char *src, int n) {
 }
 
 // let the heap start before kernel
-unsigned char* heap_pointer = (unsigned char*)0x100000; 
+unsigned char* heap_pointer = (unsigned char*)0x200000; 
 
 void* malloc(int size) {
     void* res = (void*)heap_pointer;
@@ -123,6 +124,7 @@ void print(char *string, char hex) {
 }
 
 void main() {
+    gdt_install();
     pic_remap();
     idt_init();
 
@@ -189,32 +191,64 @@ void change_directory(char *target_name) {
     print("Directory not found\n", 0x0C);
 }
 
+void make_directory(char *name) {
+    if (current_directory->child_count < 16) {
+        FSNode* new_dir = create_node(name, DIRECTORY);
+        new_dir->parent = current_directory;
+        current_directory->children[current_directory->child_count++] = new_dir;
+    } else {
+        print("Error: Directory full!\n", 0x0C);
+    }
+}
+
+void make_file(char *name) {
+    if (current_directory->child_count < 16) {
+        FSNode* new_file = create_node(name, FILE);
+        new_file->parent = current_directory;
+        current_directory->children[current_directory->child_count++] = new_file;
+    } else {
+        print("Error: Directory full!\n", 0x0C);
+    }
+}
+
+int starts_with(char *str, char *prefix) {
+    int i = 0;
+    while (prefix[i] != 0) {
+        if (str[i] != prefix[i]) return 0;
+        i++;
+    }
+    return 1;
+}
+
 void execute_command() {
     print("\n", 0x0F);
 
-    // TODO: PLEASE update this sometime :)
     if (str_step_compare(shell_buffer, "clear")) {
         clear_screen();
-    } else if (shell_buffer[0] == 'c' && shell_buffer[1] == 'd' && shell_buffer[2] == ' ') {
-        change_directory(&shell_buffer[3]);
-    } else if (str_step_compare(shell_buffer, "help")) {
-        print("Commands: help, clear, hi, ls, cd <dir>\n", 0x0A);
-    } else if (str_step_compare(shell_buffer, "hi")) {
-        print("Alloha from the kernel!", 0x0B);
     } else if (str_step_compare(shell_buffer, "ls")) {
         list_files();
+    } else if (starts_with(shell_buffer, "cd ")) {
+        change_directory(&shell_buffer[3]); // "cd " is 3 chars
+    } else if (starts_with(shell_buffer, "mkdir ")) {
+        make_directory(&shell_buffer[6]);   // "mkdir " is 6 chars
+    } else if (starts_with(shell_buffer, "touch ")) {
+        make_file(&shell_buffer[6]);        // "touch " is 6 chars
+    } else if (str_step_compare(shell_buffer, "help")) {
+        print("Commands: ls, cd, mkdir, touch, clear, hi, poweroff", 0x0A);
+    } else if (str_step_compare(shell_buffer, "hi")) {
+        print("Alloha from the kernel!", 0x0B);
     } else if (str_step_compare(shell_buffer, "poweroff")) {
         print("Goodbye!\n", 0x0A);
         __asm__("hlt");
-    } else {
+    } else if (shell_buffer[0] != 0) { // Alleen printen als er echt iets getypt is
         print("Unknown: ", 0x0C);
         print(shell_buffer, 0x0C);
     }
 
+    // Reset buffer
     for (int i = 0; i < 256; i++) shell_buffer[i] = 0;
     buffer_idx = 0;
 
-    // show current working dir
     print("\nMeepz:", 0x0E);
     print(current_directory->name, 0x0E);
     print("> ", 0x0E);

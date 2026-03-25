@@ -1,24 +1,38 @@
 [bits 32]
+
+; --- DE MULTIBOOT HEADER (Honderd procent nodig voor GRUB) ---
+section .multiboot
+    align 4
+    dd 0x1BADB002              ; Magic number
+    dd 0x03                    ; Flags (ALIGNS + MEMINFO)
+    dd -(0x1BADB002 + 0x03)    ; Checksum (Magic + Flags + Checksum moet 0 zijn)
+
+section .text
 extern main
 global kernel_entry
 global keyboard_handler_asm
 extern keyboard_handler
 
 kernel_entry:
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
+    ; GRUB laat ons achter in een werkende Protected Mode.
+    ; We stellen alleen de stack in en gaan direct naar C.
+    mov esp, stack_top
+    
+    ; Push de multiboot magic en info (optioneel, maar netjes)
+    push ebx
+    push eax
 
-    mov esp, 0x90000
     call main
-
     jmp $
 
 keyboard_handler_asm:
-    pushad               ; save all registers
-    call keyboard_handler ; call our C function
-    popad                ; restore all registers
-    iretd                ; interrupt return — NOT ret!
+    pushad
+    call keyboard_handler
+    popad
+    iretd
+
+section .bss
+align 16
+stack_bottom:
+    resb 16384                 ; 16KB stack
+stack_top:
