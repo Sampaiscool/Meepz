@@ -22,7 +22,7 @@ void gdt_install() {
 
     __asm__ __volatile__("lgdt %0" : : "m"(gp));
 
-    __asm__ __volatile__(
+     __asm__ __volatile__(
         "mov $0x10, %ax\n"
         "mov %ax, %ds\n"
         "mov %ax, %es\n"

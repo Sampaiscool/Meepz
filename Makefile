@@ -1,5 +1,5 @@
 # Objecten
-OBJS = kernel_entry.o kernel.o idt.o gdt.o memory.o screen.o fs.o commands.o shell.o editor.o keyboard.o ata.o
+OBJS = kernel_entry.o kernel.o idt.o gdt.o memory.o screen.o fs.o commands.o shell.o editor.o keyboard.o ata.o vesa.o
 
 all: meepz.iso
 
@@ -39,6 +39,9 @@ keyboard.o: src/drivers/keyboard.c src/drivers/keyboard.h
 ata.o: src/drivers/ata.c src/drivers/ata.h
 	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -I src -c src/drivers/ata.c -o ata.o
 
+vesa.o: src/drivers/vesa.c src/drivers/vesa.h
+	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -I src -c src/drivers/vesa.c -o vesa.o
+
 kernel.elf: $(OBJS)
 	ld -m elf_i386 -T linker.ld -o kernel.elf $(OBJS)
 
@@ -54,7 +57,7 @@ meepz.iso: kernel.elf
 	grub-mkrescue -o meepz.iso iso
 
 run: meepz.iso disk.img
-	qemu-system-i386 -cdrom meepz.iso -drive file=disk.img,format=raw,if=ide -display sdl
+	qemu-system-i386 -cdrom meepz.iso -drive file=disk.img,format=raw,if=ide -display sdl -d cpu_reset -no-reboot -no-shutdown
 
 disk.img:
 	dd if=/dev/zero of=disk.img bs=1M count=32
